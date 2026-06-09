@@ -8,9 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
+    "db:generate": "node --env-file=.env.local ./node_modules/.bin/drizzle-kit generate",
+    "db:migrate": "node --env-file=.env.local ./node_modules/.bin/drizzle-kit migrate",
+    "db:studio": "node --env-file=.env.local ./node_modules/.bin/drizzle-kit studio"
   },
   "dependencies": {
     "next": "^15.0.0",
