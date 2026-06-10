@@ -1,5 +1,2 @@
-export { auth as middleware } from "@/auth";
-
-export const config = {
-  matcher: ["/((?!api/auth|_next/static|_next/image|favicon.ico).*)"],
-};
+// Authentication temporarily disabled — re-enable by restoring auth middleware
+export const config = { matcher: [] };
