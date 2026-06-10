@@ -5,12 +5,15 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, AlertCircle, CheckSquare, BarChart3,
   Building2, Users, ChevronRight, Activity, CalendarCheck,
+  Newspaper, AlertOctagon,
 } from "lucide-react";
 
 const sections = [
   {
     label: "Executive",
     items: [
+      { href: "/brief", label: "Weekly Brief", icon: Newspaper },
+      { href: "/exceptions", label: "Executive Exceptions", icon: AlertOctagon },
       { href: "/executive", label: "Executive Scorecard", icon: LayoutDashboard },
       { href: "/resident-intelligence", label: "Resident Intelligence", icon: Activity },
     ],
