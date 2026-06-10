@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, AlertCircle, CheckSquare, BarChart3,
-  Building2, Users, ChevronRight, Activity,
+  Building2, Users, ChevronRight, Activity, CalendarCheck,
 } from "lucide-react";
 
 const sections = [
@@ -28,6 +28,7 @@ const sections = [
     items: [
       { href: "/issues", label: "Issues", icon: AlertCircle },
       { href: "/actions", label: "Actions", icon: CheckSquare },
+      { href: "/reviews", label: "Performance Reviews", icon: CalendarCheck },
     ],
   },
 ];
