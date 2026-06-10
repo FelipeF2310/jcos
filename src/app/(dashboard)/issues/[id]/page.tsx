@@ -2,111 +2,161 @@ import { notFound } from "next/navigation";
 import { getIssue } from "@/server/issues";
 import { getActions } from "@/server/actions";
 import { updateIssueStatus } from "@/server/actions-mutations";
-import { IssueStatusBadge, ActionStatusBadge } from "@/components/issues/status-badge";
-import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
-import { ArrowLeft, Plus } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { ArrowLeft, Plus, CheckCircle2, Clock, AlertTriangle, Circle } from "lucide-react";
 
-const priorityColors: Record<string, string> = {
-  low: "bg-gray-100 text-gray-700",
-  medium: "bg-blue-100 text-blue-700",
-  high: "bg-orange-100 text-orange-700",
-  critical: "bg-red-100 text-red-700",
+const statusConfig: Record<string, { label: string; bg: string; text: string; dot: string }> = {
+  open:          { label: "Open",        bg: "#eff6ff", text: "#1d4ed8", dot: "#1d4ed8" },
+  "in-progress": { label: "In Progress", bg: "#fefce8", text: "#a16207", dot: "#ca8a04" },
+  resolved:      { label: "Resolved",    bg: "#f0fdf4", text: "#15803d", dot: "#16a34a" },
+  escalated:     { label: "Escalated",   bg: "#fef2f2", text: "#b91c1c", dot: "#dc2626" },
+};
+
+const actionStatusConfig: Record<string, { label: string; icon: typeof Circle; color: string }> = {
+  "not-started": { label: "Not Started", icon: Circle,       color: "#94a3b8" },
+  "in-progress": { label: "In Progress", icon: Clock,        color: "#ca8a04" },
+  "complete":    { label: "Complete",    icon: CheckCircle2, color: "#16a34a" },
+};
+
+const priorityStyle: Record<string, { text: string; bg: string }> = {
+  low:      { text: "#64748b", bg: "#f8fafc" },
+  medium:   { text: "#1d4ed8", bg: "#eff6ff" },
+  high:     { text: "#ea580c", bg: "#fff7ed" },
+  critical: { text: "#dc2626", bg: "#fef2f2" },
+};
+
+const deptNames: Record<string, string> = {
+  "public-works": "Public Works",
+  "resident-response": "Resident Response",
+  "engineering-permitting": "Engineering & Permitting",
 };
 
 export default async function IssueDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const [issue, issueActions] = await Promise.all([getIssue(id), getActions(id)]);
-
   if (!issue) notFound();
 
   const isResolved = issue.status === "resolved";
+  const s = statusConfig[issue.status] ?? statusConfig.open;
+  const p = priorityStyle[issue.priority] ?? priorityStyle.medium;
 
   async function advance() {
     "use server";
     const next = issue!.status === "open" ? "in-progress" : "resolved";
     await updateIssueStatus(id, next);
   }
-
   async function escalate() {
     "use server";
     await updateIssueStatus(id, "escalated");
   }
 
-  const advanceLabel = issue.status === "open" ? "Mark In Progress" : "Mark Resolved";
+  const completedActions = issueActions.filter(a => a.status === "complete").length;
 
   return (
-    <div className="max-w-3xl space-y-8">
-      <div className="flex items-center gap-4">
-        <Link href="/issues" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
-          <ArrowLeft className="h-4 w-4 mr-1" />Issues
-        </Link>
-      </div>
+    <div className="max-w-4xl space-y-6">
+      {/* Back */}
+      <Link href="/issues" className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600">
+        <ArrowLeft className="h-3.5 w-3.5" /> Back to Issues
+      </Link>
 
-      <div className="space-y-4">
-        <div className="flex items-start justify-between gap-4">
-          <h1 className="text-2xl font-bold">{issue.title}</h1>
-          <div className="flex gap-2 shrink-0">
+      {/* Issue header card */}
+      <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: issue.status === "escalated" ? "#fca5a5" : "var(--border)" }}>
+        {issue.status === "escalated" && <div className="h-1 bg-red-500" />}
+        <div className="p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-3 flex-wrap mb-3">
+                <span
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+                  style={{ backgroundColor: s.bg, color: s.text }}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: s.dot }} />
+                  {s.label}
+                </span>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded" style={{ backgroundColor: p.bg, color: p.text }}>
+                  {issue.priority.charAt(0).toUpperCase() + issue.priority.slice(1)} Priority
+                </span>
+                <span className="text-xs text-slate-400">{deptNames[issue.departmentId] ?? issue.departmentId}</span>
+                <span className="text-xs text-slate-400">·</span>
+                <span className="text-xs text-slate-400">
+                  Opened {new Date(issue.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                </span>
+              </div>
+              <h1 className="text-xl font-bold text-slate-900">{issue.title}</h1>
+              {issue.description && (
+                <p className="text-sm text-slate-600 mt-3 leading-relaxed">{issue.description}</p>
+              )}
+            </div>
+
             {!isResolved && (
-              <>
+              <div className="flex flex-col gap-2 shrink-0">
                 <form action={advance}>
-                  <Button size="sm">{advanceLabel}</Button>
+                  <button
+                    type="submit"
+                    className="w-full px-4 py-2 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90"
+                    style={{ backgroundColor: "#1d4ed8" }}
+                  >
+                    {issue.status === "open" ? "Mark In Progress" : "Mark Resolved"}
+                  </button>
                 </form>
                 {issue.status !== "escalated" && (
                   <form action={escalate}>
-                    <Button size="sm" variant="destructive">Escalate</Button>
+                    <button
+                      type="submit"
+                      className="w-full px-4 py-2 rounded-lg text-sm font-medium border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      <AlertTriangle className="h-3.5 w-3.5 inline mr-1" />
+                      Escalate
+                    </button>
                   </form>
                 )}
-              </>
+              </div>
             )}
           </div>
         </div>
-
-        <div className="flex items-center gap-3 flex-wrap">
-          <IssueStatusBadge status={issue.status} />
-          <Badge className={priorityColors[issue.priority]}>{issue.priority} priority</Badge>
-          <span className="text-sm text-muted-foreground">{issue.departmentId}</span>
-          <span className="text-sm text-muted-foreground">
-            Opened {new Date(issue.createdAt).toLocaleDateString()}
-          </span>
-        </div>
-
-        {issue.description && (
-          <p className="text-sm text-muted-foreground leading-relaxed">{issue.description}</p>
-        )}
       </div>
 
-      <Separator />
-
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold">Actions ({issueActions.length})</h2>
-          <Link href={`/actions?issueId=${id}`} className={cn(buttonVariants({ size: "sm" }))}>
-            <Plus className="h-4 w-4 mr-1" />Add Action
+      {/* Actions */}
+      <div className="bg-white rounded-xl border" style={{ borderColor: "var(--border)" }}>
+        <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "var(--border)" }}>
+          <div>
+            <h2 className="font-semibold text-slate-900">Corrective Actions</h2>
+            <p className="text-xs text-slate-400 mt-0.5">{completedActions} of {issueActions.length} complete</p>
+          </div>
+          <Link
+            href={`/actions?issueId=${id}`}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white"
+            style={{ backgroundColor: "var(--primary)" }}
+          >
+            <Plus className="h-3.5 w-3.5" /> Add Action
           </Link>
         </div>
 
         {issueActions.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4">No actions yet. Add one to start tracking progress.</p>
-        ) : (
-          <div className="space-y-3">
-            {issueActions.map((action) => (
-              <div key={action.id} className="flex items-center justify-between rounded-lg border p-4">
-                <div>
-                  <p className="text-sm font-medium">{action.description}</p>
-                  {action.dueDate && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Due {new Date(action.dueDate).toLocaleDateString()}
-                    </p>
-                  )}
-                </div>
-                <ActionStatusBadge status={action.status} />
-              </div>
-            ))}
+          <div className="p-8 text-center">
+            <p className="text-sm text-slate-400">No actions yet. Add one to start tracking progress.</p>
           </div>
+        ) : (
+          <ul className="divide-y" style={{ borderColor: "var(--border)" }}>
+            {issueActions.map((action) => {
+              const as = actionStatusConfig[action.status] ?? actionStatusConfig["not-started"];
+              const Icon = as.icon;
+              return (
+                <li key={action.id} className="flex items-start gap-4 px-6 py-4">
+                  <Icon className="h-4 w-4 mt-0.5 shrink-0" style={{ color: as.color }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-800">{action.description}</p>
+                    {action.dueDate && (
+                      <p className="text-xs text-slate-400 mt-1">
+                        Due {new Date(action.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      </p>
+                    )}
+                  </div>
+                  <span className="text-xs font-medium" style={{ color: as.color }}>{as.label}</span>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </div>
     </div>
