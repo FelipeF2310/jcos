@@ -6,3 +6,4 @@ export * from "./issues";
 export * from "./issue-comments";
 export * from "./actions";
 export * from "./performance-reviews";
+export * from "./notifications";

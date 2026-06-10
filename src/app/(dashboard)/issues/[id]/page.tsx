@@ -7,7 +7,6 @@ import Link from "next/link";
 import { ArrowLeft, Plus, CheckCircle2, Clock, AlertTriangle, Circle, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -174,12 +173,6 @@ export default async function IssueDetailPage({ params }: { params: Promise<{ id
             await addComment(formData);
           }} className="space-y-3">
             <input type="hidden" name="issueId" value={id} />
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="authorName" className="text-xs">Your name</Label>
-                <Input id="authorName" name="authorName" placeholder="e.g. Director Smith" required className="h-8 text-sm" />
-              </div>
-            </div>
             <div className="space-y-1">
               <Label htmlFor="body" className="text-xs">Comment</Label>
               <Textarea id="body" name="body" placeholder="Add an update, note, or decision..." rows={3} required />

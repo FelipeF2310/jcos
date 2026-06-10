@@ -6,6 +6,8 @@ import { issues, actions, metrics, metricReadings, issueComments, performanceRev
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { randomUUID } from "crypto";
+import { auth } from "@/auth";
+import { createNotification, notifyByRole } from "./notifications";
 
 // ── Issues ──────────────────────────────────────────────────────────────────
 
@@ -23,12 +25,29 @@ export async function createIssue(formData: FormData) {
     departmentId: formData.get("departmentId"),
     priority: formData.get("priority"),
   });
-  await db.insert(issues).values({ id: randomUUID(), ...parsed, status: "open" });
+
+  const session = await auth();
+  const ownerId = session?.user?.id ?? null;
+
+  await db.insert(issues).values({ id: randomUUID(), ...parsed, status: "open", ownerId });
   revalidatePath("/issues");
 }
 
 export async function updateIssueStatus(id: string, status: "open" | "in-progress" | "resolved" | "escalated") {
   await db.update(issues).set({ status, updatedAt: new Date() }).where(eq(issues.id, id));
+
+  if (status === "escalated") {
+    const [issue] = await db.select({ title: issues.title }).from(issues).where(eq(issues.id, id)).limit(1);
+    if (issue) {
+      await notifyByRole("executive", {
+        type: "escalation",
+        title: `Issue escalated: ${issue.title}`,
+        body: "An issue has been escalated and requires executive attention.",
+        href: `/issues/${id}`,
+      });
+    }
+  }
+
   revalidatePath("/issues");
   revalidatePath(`/issues/${id}`);
 }
@@ -38,7 +57,6 @@ export async function updateIssueStatus(id: string, status: "open" | "in-progres
 const CreateActionSchema = z.object({
   description: z.string().min(1),
   issueId: z.string().min(1),
-  ownerId: z.string().min(1),
   dueDate: z.string().optional(),
 });
 
@@ -46,17 +64,32 @@ export async function createAction(formData: FormData) {
   const parsed = CreateActionSchema.parse({
     description: formData.get("description"),
     issueId: formData.get("issueId"),
-    ownerId: formData.get("ownerId"),
     dueDate: formData.get("dueDate"),
   });
+
+  const session = await auth();
+  const ownerId = session?.user?.id ?? "unassigned";
+
+  const actionId = randomUUID();
   await db.insert(actions).values({
-    id: randomUUID(),
+    id: actionId,
     description: parsed.description,
     issueId: parsed.issueId,
-    ownerId: parsed.ownerId,
+    ownerId,
     status: "not-started",
     dueDate: parsed.dueDate ? new Date(parsed.dueDate) : null,
   });
+
+  if (session?.user?.id) {
+    await createNotification({
+      userId: session.user.id,
+      type: "action-assigned",
+      title: "Action assigned to you",
+      body: parsed.description,
+      href: `/issues/${parsed.issueId}`,
+    });
+  }
+
   revalidatePath("/actions");
   revalidatePath(`/issues/${parsed.issueId}`);
 }
@@ -86,7 +119,6 @@ export async function recordMetricReading(formData: FormData) {
   });
 
   const target = formData.get("target") as string | null;
-  const unit = formData.get("unit") as string | null;
   const numValue = parseFloat(parsed.value);
   const numTarget = target ? parseFloat(target) : null;
 
@@ -119,17 +151,32 @@ export async function recordMetricReading(formData: FormData) {
 
 const AddCommentSchema = z.object({
   issueId: z.string().min(1),
-  authorName: z.string().min(1),
   body: z.string().min(1),
 });
 
 export async function addComment(formData: FormData) {
   const parsed = AddCommentSchema.parse({
     issueId: formData.get("issueId"),
-    authorName: formData.get("authorName"),
     body: formData.get("body"),
   });
-  await db.insert(issueComments).values({ id: randomUUID(), ...parsed });
+
+  const session = await auth();
+  const authorName = session?.user?.name ?? "Anonymous";
+
+  await db.insert(issueComments).values({ id: randomUUID(), ...parsed, authorName });
+
+  // Notify issue owner if set and different from commenter
+  const [issue] = await db.select({ ownerId: issues.ownerId, title: issues.title }).from(issues).where(eq(issues.id, parsed.issueId)).limit(1);
+  if (issue?.ownerId && issue.ownerId !== session?.user?.id) {
+    await createNotification({
+      userId: issue.ownerId,
+      type: "comment",
+      title: `New comment on: ${issue.title}`,
+      body: parsed.body.slice(0, 120),
+      href: `/issues/${parsed.issueId}`,
+    });
+  }
+
   revalidatePath(`/issues/${parsed.issueId}`);
 }
 
@@ -167,6 +214,14 @@ export async function createReview(formData: FormData) {
   for (const issueId of issueIds) {
     await db.insert(reviewIssues).values({ id: randomUUID(), reviewId: id, issueId, notes: null });
   }
+
+  // Notify directors about scheduled review
+  await notifyByRole("director", {
+    type: "review-scheduled",
+    title: `${parsed.type === "weekly" ? "Weekly" : "Monthly"} review scheduled`,
+    body: `Review scheduled for ${new Date(parsed.reviewDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}.`,
+    href: `/reviews/${id}`,
+  });
 
   revalidatePath("/reviews");
   return id;
