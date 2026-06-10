@@ -14,8 +14,8 @@ The first things leadership sees, designed to be scannable without clicking arou
 
 | Surface | Answers | Description |
 |---|---|---|
-| **Weekly Brief** *(landing)* | "What should leadership know this week?" | Headline counts (metrics improving/declining, departments on target vs. requiring intervention), a **City Health Overview** band (green/yellow/red tally, month-over-month net, and three operational lenses), top improvements, areas requiring attention, and upcoming risks. |
-| **Executive Exceptions** | "Where is intervention needed?" | Only the metrics that need attention — each card shows current vs. target, period-over-period change, *why it matters*, and a suggested CitiStat follow-up question for the meeting agenda. |
+| **Weekly Brief** *(landing)* | "What should leadership know this week?" | Headline counts (metrics improving/declining, departments on target vs. requiring intervention), a **City Health Overview** band (green/yellow/red tally, month-over-month net, and three operational lenses), a **Department Status** list naming which departments are at *intervention / watch / on target* and why, top improvements, areas requiring attention, and upcoming risks. |
+| **Executive Exceptions** | "Where is intervention needed?" | Only the metrics that need attention — each card shows current vs. target, period-over-period change, *why it matters*, and a suggested CitiStat follow-up question for the meeting agenda. A **Raise as issue** link pre-fills the issue tracker, closing the loop from exception to tracked work. |
 | **Executive Scorecard** | "How is the city doing overall?" | City-wide KPI cards with status indicators and sparkline trends. |
 | **Resident Intelligence** | "Are residents getting answers?" | Consolidated view of resident concerns and service demand by department. |
 
@@ -27,7 +27,7 @@ The working layer where issues are tracked and reviews are run, backed by Postgr
 
 | Module | Description |
 |---|---|
-| **Department Dashboards** | Per-department metrics, trend charts, and metric data entry |
+| **Department Dashboards** | Per-department metrics, trend charts, and metric data entry — status is computed polarity-aware (each metric knows whether higher or lower is better) |
 | **Issue Tracker** | Log, prioritize, escalate, and resolve operational issues |
 | **Action Management** | Corrective actions tied to issues with status tracking |
 | **Performance Reviews** | Schedule and document weekly/monthly CitiStat review sessions |
@@ -140,16 +140,22 @@ src/
 
 User roles are managed directly in the database. New users default to `staff` on first sign-in.
 
+> **Demo mode:** authentication is currently disabled (`src/middleware.ts` has an empty matcher) so the live demo is browsable without sign-in. The Auth.js setup remains in place; restore the middleware matcher to re-enable route protection.
+
 ## Scripts
 
 ```bash
 npm run dev          # Start dev server
 npm run build        # Production build
+npm run typecheck    # TypeScript check (no emit)
+npm run lint         # ESLint
 npm run db:generate  # Generate Drizzle migrations
 npm run db:migrate   # Apply migrations
 npm run db:seed      # Seed sample data
 npm run db:studio    # Open Drizzle Studio
 ```
+
+CI (GitHub Actions) runs `typecheck` and `lint` on every push and pull request.
 
 ## Deploying
 

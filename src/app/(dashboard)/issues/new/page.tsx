@@ -13,7 +13,14 @@ const DEPARTMENTS = [
   { id: "engineering-permitting", name: "Engineering & Permitting" },
 ];
 
-export default function NewIssuePage() {
+export default async function NewIssuePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ title?: string; description?: string; departmentId?: string; priority?: string }>;
+}) {
+  // Prefills passed from an Executive Exception's "Raise as issue" link.
+  const prefill = await searchParams;
+
   async function handleCreate(formData: FormData) {
     "use server";
     await createIssue(formData);
@@ -30,18 +37,18 @@ export default function NewIssuePage() {
       <form action={handleCreate} className="space-y-6">
         <div className="space-y-2">
           <Label htmlFor="title">Title</Label>
-          <Input id="title" name="title" placeholder="Brief description of the issue" required />
+          <Input id="title" name="title" placeholder="Brief description of the issue" defaultValue={prefill.title} required />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="description">Description</Label>
-          <Textarea id="description" name="description" placeholder="What is happening? What is the impact?" rows={4} />
+          <Textarea id="description" name="description" placeholder="What is happening? What is the impact?" rows={4} defaultValue={prefill.description} />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="departmentId">Department</Label>
-            <select name="departmentId" required className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs">
+            <select name="departmentId" required defaultValue={prefill.departmentId ?? ""} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs">
               <option value="">Select department</option>
               {DEPARTMENTS.map((d) => (
                 <option key={d.id} value={d.id}>{d.name}</option>
@@ -51,7 +58,7 @@ export default function NewIssuePage() {
 
           <div className="space-y-2">
             <Label htmlFor="priority">Priority</Label>
-            <select name="priority" required className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs">
+            <select name="priority" required defaultValue={prefill.priority ?? "medium"} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs">
               <option value="low">Low</option>
               <option value="medium">Medium</option>
               <option value="high">High</option>

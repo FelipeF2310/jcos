@@ -118,16 +118,29 @@ export async function recordMetricReading(formData: FormData) {
     notes: formData.get("notes"),
   });
 
-  const target = formData.get("target") as string | null;
   const numValue = parseFloat(parsed.value);
-  const numTarget = target ? parseFloat(target) : null;
+  if (!Number.isFinite(numValue)) throw new Error("Metric value must be a number");
+
+  // Target and polarity come from the metric itself, not the form.
+  const [metric] = await db
+    .select({ target: metrics.target, direction: metrics.direction })
+    .from(metrics)
+    .where(eq(metrics.id, parsed.metricId))
+    .limit(1);
+  if (!metric) throw new Error("Unknown metric");
+
+  const numTarget = metric.target ? parseFloat(metric.target) : null;
 
   let status: "on-target" | "at-risk" | "off-target" = "on-target";
-  if (numTarget !== null) {
+  if (numTarget !== null && numTarget !== 0) {
     const pct = numValue / numTarget;
-    if (pct > 1.15) status = "off-target";
-    else if (pct > 1.05) status = "at-risk";
-    else status = "on-target";
+    if (metric.direction === "higher-better") {
+      if (pct < 0.85) status = "off-target";
+      else if (pct < 0.95) status = "at-risk";
+    } else {
+      if (pct > 1.15) status = "off-target";
+      else if (pct > 1.05) status = "at-risk";
+    }
   }
 
   await db.insert(metricReadings).values({
@@ -200,20 +213,24 @@ export async function createReview(formData: FormData) {
   });
 
   const id = randomUUID();
-  await db.insert(performanceReviews).values({
-    id,
-    type: parsed.type,
-    departmentId: parsed.departmentId ?? null,
-    reviewDate: new Date(parsed.reviewDate),
-    attendees: parsed.attendees ?? null,
-    summary: parsed.summary ?? null,
-    status: "scheduled",
-  });
-
   const issueIds = (formData.get("issueIds") as string ?? "").split(",").filter(Boolean);
-  for (const issueId of issueIds) {
-    await db.insert(reviewIssues).values({ id: randomUUID(), reviewId: id, issueId, notes: null });
-  }
+
+  await db.transaction(async (tx) => {
+    await tx.insert(performanceReviews).values({
+      id,
+      type: parsed.type,
+      departmentId: parsed.departmentId ?? null,
+      reviewDate: new Date(parsed.reviewDate),
+      attendees: parsed.attendees ?? null,
+      summary: parsed.summary ?? null,
+      status: "scheduled",
+    });
+    if (issueIds.length > 0) {
+      await tx.insert(reviewIssues).values(
+        issueIds.map((issueId) => ({ id: randomUUID(), reviewId: id, issueId, notes: null })),
+      );
+    }
+  });
 
   // Notify directors about scheduled review
   await notifyByRole("director", {

@@ -37,14 +37,14 @@ async function seed() {
   await db.insert(metrics).values([
     { id: "m1", name: "Pothole Response Time", departmentId: "public-works", value: "4.2", target: "3.0", unit: "days", status: "off-target", period: "2026-06" },
     { id: "m2", name: "Illegal Dumping Cleanup", departmentId: "public-works", value: "2.4", target: "2.0", unit: "days", status: "at-risk", period: "2026-06" },
-    { id: "m3", name: "Street Cleaning Completion", departmentId: "public-works", value: "81", target: "95", unit: "%", status: "off-target", period: "2026-06" },
+    { id: "m3", direction: "higher-better" as const, name: "Street Cleaning Completion", departmentId: "public-works", value: "81", target: "95", unit: "%", status: "off-target", period: "2026-06" },
     { id: "m4", name: "Work Order Backlog", departmentId: "public-works", value: "312", target: "150", unit: "orders", status: "off-target", period: "2026-06" },
     { id: "m5", name: "Avg. Response Time", departmentId: "resident-response", value: "2.8", target: "1.0", unit: "days", status: "off-target", period: "2026-06" },
-    { id: "m6", name: "Resolution Rate", departmentId: "resident-response", value: "74", target: "90", unit: "%", status: "off-target", period: "2026-06" },
+    { id: "m6", direction: "higher-better" as const, name: "Resolution Rate", departmentId: "resident-response", value: "74", target: "90", unit: "%", status: "off-target", period: "2026-06" },
     { id: "m7", name: "Open Requests", departmentId: "resident-response", value: "537", target: "200", unit: "requests", status: "off-target", period: "2026-06" },
-    { id: "m8", name: "SLA Compliance", departmentId: "resident-response", value: "68", target: "85", unit: "%", status: "off-target", period: "2026-06" },
+    { id: "m8", direction: "higher-better" as const, name: "SLA Compliance", departmentId: "resident-response", value: "68", target: "85", unit: "%", status: "off-target", period: "2026-06" },
     { id: "m9", name: "Permit Review Time", departmentId: "engineering-permitting", value: "21", target: "10", unit: "days", status: "off-target", period: "2026-06" },
-    { id: "m10", name: "Inspection Completion", departmentId: "engineering-permitting", value: "88", target: "95", unit: "%", status: "at-risk", period: "2026-06" },
+    { id: "m10", direction: "higher-better" as const, name: "Inspection Completion", departmentId: "engineering-permitting", value: "88", target: "95", unit: "%", status: "at-risk", period: "2026-06" },
     { id: "m11", name: "Permit Backlog", departmentId: "engineering-permitting", value: "94", target: "50", unit: "permits", status: "off-target", period: "2026-06" },
     { id: "m12", name: "Approval Cycle Time", departmentId: "engineering-permitting", value: "34", target: "21", unit: "days", status: "off-target", period: "2026-06" },
   ]);

@@ -1,7 +1,24 @@
-import { MessageCircleQuestion } from "lucide-react";
+import Link from "next/link";
+import { MessageCircleQuestion, ArrowUpRight } from "lucide-react";
 import { StatusBadge } from "./status-badge";
 import { TrendIndicator } from "./trend-indicator";
 import { fmt, deptName, type Exception } from "@/lib/citistat/derive";
+
+// Departments that exist in the DB-backed issue tracker; only these can be
+// preselected on the new-issue form.
+const TRACKED_DEPARTMENTS = new Set(["public-works", "resident-response", "engineering-permitting"]);
+
+function raiseIssueHref({ metric }: Exception): string {
+  const params = new URLSearchParams({
+    title: `${metric.name} off target (${fmt.value(metric)} vs ${fmt.target(metric)})`,
+    description: `${metric.whyItMatters}\n\nCitiStat follow-up: ${metric.followUp}`,
+    priority: metric.status === "off-target" ? "high" : "medium",
+  });
+  if (TRACKED_DEPARTMENTS.has(metric.departmentId)) {
+    params.set("departmentId", metric.departmentId);
+  }
+  return `/issues/new?${params.toString()}`;
+}
 
 // The CitiStat exception. Not "here is a metric" — "here is something that needs
 // attention, why it matters, and the question to ask in the meeting."
@@ -48,6 +65,17 @@ export function ExceptionCard({ exception }: { exception: Exception }) {
             </p>
             <p className="text-sm text-blue-900 leading-snug">{metric.followUp}</p>
           </div>
+        </div>
+
+        {/* Close the loop: exception → tracked issue */}
+        <div className="mt-3 flex justify-end">
+          <Link
+            href={raiseIssueHref(exception)}
+            className="inline-flex items-center gap-1 text-xs font-medium text-blue-700 hover:text-blue-900"
+          >
+            Raise as issue
+            <ArrowUpRight className="h-3.5 w-3.5" />
+          </Link>
         </div>
       </div>
     </div>

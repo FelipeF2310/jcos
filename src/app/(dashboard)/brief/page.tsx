@@ -8,14 +8,44 @@ import {
   CalendarClock,
   ArrowRight,
 } from "lucide-react";
-import { weeklyBrief, cityHealth, changeOf, fmt, deptName } from "@/lib/citistat/derive";
+import {
+  weeklyBrief,
+  cityHealth,
+  departmentRollups,
+  changeOf,
+  fmt,
+  deptName,
+  type DeptTier,
+} from "@/lib/citistat/derive";
 import { upcomingRisks } from "@/lib/citistat/data";
 import { StatusBadge } from "@/components/citistat/status-badge";
 import { TrendIndicator } from "@/components/citistat/trend-indicator";
 
+// Re-render hourly so the "Week of" header tracks the real calendar
+// instead of freezing at deploy time.
+export const revalidate = 3600;
+
+const TIER_ORDER: Record<DeptTier, number> = { intervention: 0, watch: 1, meeting: 2 };
+
+const TIER_META: Record<DeptTier, { label: string; color: string; bg: string; border: string }> = {
+  intervention: { label: "Intervention", color: "#b91c1c", bg: "#fef2f2", border: "#fecaca" },
+  watch: { label: "Watch", color: "#a16207", bg: "#fefce8", border: "#fde68a" },
+  meeting: { label: "On target", color: "#15803d", bg: "#f0fdf4", border: "#bbf7d0" },
+};
+
+function weekOfLabel(now = new Date()) {
+  const monday = new Date(now);
+  const day = monday.getDay();
+  monday.setDate(monday.getDate() - ((day + 6) % 7));
+  return monday.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
 export default function WeeklyBriefPage() {
   const brief = weeklyBrief();
   const health = cityHealth();
+  const rollups = [...departmentRollups()].sort(
+    (a, b) => TIER_ORDER[a.tier] - TIER_ORDER[b.tier] || b.red - a.red || b.yellow - a.yellow,
+  );
 
   return (
     <div className="max-w-6xl space-y-8">
@@ -23,7 +53,7 @@ export default function WeeklyBriefPage() {
       <div className="flex items-start justify-between">
         <div>
           <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-1">
-            Weekly Brief · Week of June 9, 2026
+            Weekly Brief · Week of {weekOfLabel()}
           </p>
           <h1 className="text-2xl font-bold text-slate-900">What leadership should know this week</h1>
           <p className="text-sm text-slate-500 mt-1">
@@ -42,7 +72,7 @@ export default function WeeklyBriefPage() {
       </div>
 
       {/* Headline counts */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <CountCard
           label="Metrics improving"
           value={brief.improving}
@@ -95,7 +125,7 @@ export default function WeeklyBriefPage() {
               </span>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {health.lenses.map((lens) => (
               <div
                 key={lens.lens}
@@ -118,8 +148,40 @@ export default function WeeklyBriefPage() {
         </div>
       </section>
 
+      {/* Department status — which departments, not just how many */}
+      <section>
+        <SectionTitle>Department status</SectionTitle>
+        <div className="bg-white rounded-lg border divide-y" style={{ borderColor: "var(--border)" }}>
+          {rollups.map((d) => {
+            const tier = TIER_META[d.tier];
+            return (
+              <div key={d.id} className="flex items-center gap-3 px-4 py-3" style={{ borderColor: "var(--border)" }}>
+                <span
+                  className="shrink-0 text-[11px] font-semibold uppercase tracking-wider rounded px-2 py-0.5 border w-24 text-center"
+                  style={{ color: tier.color, backgroundColor: tier.bg, borderColor: tier.border }}
+                >
+                  {tier.label}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-slate-800 truncate">
+                    {d.name}
+                    <span className="text-slate-400 font-normal"> · {d.director}</span>
+                  </p>
+                  <p className="text-xs text-slate-500 mt-0.5 truncate">{d.reason}</p>
+                </div>
+                <div className="hidden sm:flex items-center gap-2.5 shrink-0 text-xs text-slate-500">
+                  <Dot count={d.red} color="#dc2626" />
+                  <Dot count={d.yellow} color="#ca8a04" />
+                  <Dot count={d.green} color="#16a34a" />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
       {/* Two columns: improvements vs attention */}
-      <div className="grid grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <section>
           <SectionTitle>
             <TrendingUp className="h-4 w-4 text-green-600" />
@@ -231,6 +293,15 @@ function CountCard({
       </div>
       <p className="text-3xl font-bold" style={{ color }}>{value}</p>
     </div>
+  );
+}
+
+function Dot({ count, color }: { count: number; color: string }) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color, opacity: count === 0 ? 0.25 : 1 }} />
+      {count}
+    </span>
   );
 }
 

@@ -3,7 +3,11 @@ import { ArrowLeft, ListFilter } from "lucide-react";
 import { exceptions } from "@/lib/citistat/derive";
 import { ExceptionCard } from "@/components/citistat/exception-card";
 
+// Re-render hourly so the period label tracks the real calendar.
+export const revalidate = 3600;
+
 export default function ExceptionsPage() {
+  const period = new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" });
   const items = exceptions();
   const redCount = items.filter((e) => e.metric.status === "off-target").length;
 
@@ -17,7 +21,7 @@ export default function ExceptionsPage() {
         </Link>
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-1">CitiStat · June 2026</p>
+            <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-1">CitiStat · {period}</p>
             <h1 className="text-2xl font-bold text-slate-900">Executive Exceptions</h1>
             <p className="text-sm text-slate-500 mt-1">
               Only the metrics that need leadership attention — not every number. Each carries the
@@ -40,7 +44,7 @@ export default function ExceptionsPage() {
           <p className="text-sm text-slate-400">No exceptions this period — every metric is on target.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {items.map((e) => (
             <ExceptionCard key={e.metric.id} exception={e} />
           ))}
